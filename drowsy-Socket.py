@@ -11,6 +11,8 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_address = ('172.31.32.16', 65432)
 client_socket.connect(server_address)
 
+startTime = time.time()
+
 # Drowsiness detection function using Eye Aspect Ratio (EAR)
 def eye_aspect_ratio(eye):
     A = dist.euclidean(eye[1], eye[5])
@@ -35,13 +37,15 @@ for filename in os.listdir(directory):
 cap = cv2.VideoCapture(0)
 
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("../shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("./shape_predictor_68_face_landmarks.dat")
 
 tolerance = 0.6
 drowsy_threshold = 0.25
 
 # Flag to keep track of the current drowsiness state
 drowsy_flag = False
+
+drowsinessFrameCount = 0
 
 while True:
     ret, frame = cap.read()
@@ -81,15 +85,25 @@ while True:
                 if avg_ear < drowsy_threshold:
                     drowsiness_detected = True
 
-    if drowsiness_detected and not drowsy_flag:
-        cv2.putText(frame, 'DROWSY', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-        client_socket.sendall(b'1')
-        print("Drowsiness 1 sent to server")
+    if drowsiness_detected and not drowsy_flag:        
         drowsy_flag = True
-    elif not drowsiness_detected and drowsy_flag:
+
+    elif not drowsiness_detected and drowsy_flag:       
+        drowsy_flag = False
         client_socket.sendall(b'0')
         print("Drowsiness 0 sent to server")
-        drowsy_flag = False
+        drowsinessFrameCount = 0
+
+    if drowsiness_detected:
+        cv2.putText(frame, 'EYES CLOSED', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        drowsinessFrameCount += 1
+        print(drowsinessFrameCount)
+        if drowsinessFrameCount > 20:
+            client_socket.sendall(b'1')
+            print("Drowsiness 1 sent to server")
+            drowsinessFrameCount = 0
+    if not drowsiness_detected:
+        cv2.putText(frame, 'EYES OPEN', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
     cv2.imshow('Face Recognition', frame)
 

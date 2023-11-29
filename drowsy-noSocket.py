@@ -6,6 +6,9 @@ import numpy as np
 import os
 import socket
 import time
+
+startTime = time.time()
+
 # Drowsiness detection function using Eye Aspect Ratio (EAR)
 def eye_aspect_ratio(eye):
     A = dist.euclidean(eye[1], eye[5])
@@ -37,6 +40,8 @@ drowsy_threshold = 0.25
 
 # Flag to keep track of the current drowsiness state
 drowsy_flag = False
+
+drowsinessFrameCount = 0
 
 while True:
     ret, frame = cap.read()
@@ -76,19 +81,23 @@ while True:
                 if avg_ear < drowsy_threshold:
                     drowsiness_detected = True
 
+    if drowsiness_detected and not drowsy_flag:        
+        drowsy_flag = True
+
+    elif not drowsiness_detected and drowsy_flag:       
+        drowsy_flag = False
+        print("Drowsiness 0 sent to server")
+        drowsinessFrameCount = 0
+
     if drowsiness_detected:
         cv2.putText(frame, 'DROWSY', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        drowsinessFrameCount += 1
+        print(drowsinessFrameCount)
+        if drowsinessFrameCount > 30:
+            print("Drowsiness 1 sent to server")
+            drowsinessFrameCount = 0
     if not drowsiness_detected:
         cv2.putText(frame, 'NOT DROWSY', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-
-    if drowsiness_detected and not drowsy_flag:
-        print("Drowsiness 1 sent to server")
-        drowsy_flag = True
-    elif not drowsiness_detected and drowsy_flag:
-        # cv2.putText(frame, 'NOT DROWSY', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-        print("Drowsiness 0 sent to server")
-        start_time = time.time()
-        drowsy_flag = False
 
     cv2.imshow('Face Recognition', frame)
 
@@ -97,4 +106,3 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-
