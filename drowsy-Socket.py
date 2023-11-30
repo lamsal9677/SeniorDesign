@@ -5,13 +5,23 @@ from scipy.spatial import distance as dist
 import numpy as np
 import os
 import socket
-import time
+import threading
+
+
+
+def announce_message(message):
+    os.system(f'say -r 200 "{message}"')
+
+def background_function():
+    message = "Drowsiness Detected. Switching to Autonomous Mode."
+    announce_message(message)
+
+background_thread = threading.Thread(target=background_function)
+
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_address = ('172.31.32.16', 65432)
+server_address = ('192.168.0.101', 65432)
 client_socket.connect(server_address)
-
-startTime = time.time()
 
 # Drowsiness detection function using Eye Aspect Ratio (EAR)
 def eye_aspect_ratio(eye):
@@ -95,6 +105,8 @@ while True:
         drowsinessFrameCount = 0
 
     if drowsiness_detected:
+        # endTime = time.time()
+        # print(endTime - startTime)
         cv2.putText(frame, 'EYES CLOSED', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         drowsinessFrameCount += 1
         print(drowsinessFrameCount)
@@ -102,6 +114,10 @@ while True:
             client_socket.sendall(b'1')
             print("Drowsiness 1 sent to server")
             drowsinessFrameCount = 0
+            background_thread.start()
+            background_thread = threading.Thread(target=background_function)
+
+
     if not drowsiness_detected:
         cv2.putText(frame, 'EYES OPEN', (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
@@ -110,6 +126,7 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+background_thread.join()
 client_socket.close()
 cap.release()
 cv2.destroyAllWindows()
